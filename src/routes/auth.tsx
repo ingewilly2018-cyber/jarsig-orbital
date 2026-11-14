@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import "@lovable.dev/cloud-auth-js/styles.css";
+import { HalftoneSphere } from "@/components/HalftoneSphere";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -55,8 +56,9 @@ function AuthPage() {
 
   const input = "w-full border border-border bg-transparent px-4 py-3 text-sm outline-none focus:border-glow";
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 font-sans text-foreground">
-      <div className="w-full max-w-sm">
+    <main className="grid min-h-screen items-center gap-12 bg-background px-6 py-12 font-sans text-foreground md:grid-cols-2">
+      <HalftoneSphere className="hidden w-full max-w-lg justify-self-center md:block" />
+      <div className="mx-auto w-full max-w-sm">
         <Link to="/" className="text-poster block text-center text-5xl">JARSIG</Link>
         <p className="mt-3 text-center text-xs uppercase tracking-[0.3em] text-muted-foreground">
           {mode === "in" ? "Sign in to fly" : "Create your pilot account"}

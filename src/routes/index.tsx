@@ -18,9 +18,9 @@ export const Route = createFileRoute("/")({
 });
 
 const items = [
-  ["01", "Simulate", "Land on real Moon regions with different terrain."],
-  ["02", "Train", "Every landing teaches autonomous spacecraft new scenarios."],
-  ["03", "Open source", "Built in the open for the next generation of engineers."],
+  ["01", "Observe", "Mapping the sky with precision instruments."],
+  ["02", "Explore", "Designing missions beyond low orbit."],
+  ["03", "Share", "Open data for the curious and the bold."],
 ];
 
 function Index() {
@@ -50,12 +50,16 @@ function Index() {
 
       <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <p className="mb-6 text-xs uppercase tracking-[0.4em] text-foreground">Space landing innovation</p>
+          <p className="mb-6 text-xs uppercase tracking-[0.3em] text-muted-foreground">Space Project — Est. 2026</p>
           <h1 className="text-poster text-7xl md:text-9xl">JARSIG</h1>
           <p className="mt-6 max-w-md text-xs uppercase leading-relaxed tracking-[0.2em] text-foreground">Open source · helping the new generation train autonomous spacecraft to land, no matter the scenario</p>
-          <Link to={signedIn ? "/play" : "/auth"} className="mt-10 inline-block border border-foreground px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-foreground hover:text-background">
+          <p className="mt-4 max-w-sm text-muted-foreground">Looking up, reaching out. A quiet pursuit of the unknown.</p>
+          <div className="mt-10 flex flex-wrap gap-4">
+          <a href="#mission" className="inline-block border border-border px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:border-foreground">Discover</a>
+          <Link to={signedIn ? "/play" : "/auth"} className="inline-block border border-foreground px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-foreground hover:text-background">
             {signedIn ? "Start a landing" : "Sign in to play"}
           </Link>
+          </div>
         </div>
         <HalftoneSphere className="w-full max-w-lg justify-self-center" />
       </section>
