@@ -136,7 +136,7 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
         }
       }
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
-      for (const [x, y, b] of stars) { ctx.fillStyle = `rgba(255,255,255,${0.2 + b * 0.6})`; ctx.fillRect(x, y, 1.5, 1.5); }
+      for (const [x = 0, y = 0, b = 0] of stars) { ctx.fillStyle = `rgba(255,255,255,${0.2 + b * 0.6})`; ctx.fillRect(x, y, 1.5, 1.5); }
       ctx.beginPath(); ctx.moveTo(0, H);
       t.pts.forEach((y, i) => ctx.lineTo(i * t.step, y)); ctx.lineTo(W, H); ctx.closePath();
       ctx.fillStyle = "#1c1c1e"; ctx.fill(); ctx.strokeStyle = muted; ctx.lineWidth = 1; ctx.stroke();
@@ -154,7 +154,7 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    canvas.current!.dataset.sceneReady = "true";
+    canvas.current!.dataset["sceneReady"] = "true";
     return () => cancelAnimationFrame(raf);
   }, [site, round]);
 
