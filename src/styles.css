@@ -31,6 +31,9 @@
 
 @theme inline {
   --font-display: "Space Grotesk", sans-serif;
+  --font-title: "Exo 2", sans-serif;
+  --color-glow: var(--glow);
+  --color-glow-deep: var(--glow-deep);
   --font-sans: "DM Sans", sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -76,6 +79,8 @@
 
 :root {
   --radius: 0;
+  --glow: oklch(0.78 0.15 220);
+  --glow-deep: oklch(0.5 0.2 262);
   --background: oklch(0.08 0 0);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -154,4 +159,14 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@utility text-poster {
+  font-family: var(--font-title);
+  font-weight: 200;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, var(--glow), var(--glow-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
