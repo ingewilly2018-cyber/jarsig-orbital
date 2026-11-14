@@ -32,12 +32,12 @@ function makeTerrain(site: Site) {
   const padLen = Math.ceil(site.pad / (W / n));
   let y = H - 120;
   for (let i = 0; i <= n; i++) {
-    if (i > padStart && i <= padStart + padLen) { pts.push(pts[i - 1]); continue; }
+    if (i > padStart && i <= padStart + padLen) { pts.push(pts[i - 1] ?? y); continue; }
     y += (Math.random() - 0.5) * site.rough;
     y = Math.max(H * 0.45, Math.min(H - 30, y));
     pts.push(y);
   }
-  return { pts, step: W / n, padX0: padStart * (W / n), padX1: (padStart + padLen) * (W / n), padY: pts[padStart] };
+  return { pts, step: W / n, padX0: padStart * (W / n), padX1: (padStart + padLen) * (W / n), padY: pts[padStart] ?? H - 120 };
 }
 
 function Play() {
@@ -113,7 +113,7 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
     const css = getComputedStyle(document.documentElement);
     const glow = css.getPropertyValue("--glow"), fg = css.getPropertyValue("--foreground"), muted = css.getPropertyValue("--muted-foreground");
     let last = performance.now(), raf = 0;
-    const groundAt = (x: number) => { const i = Math.max(0, Math.min(t.pts.length - 2, Math.floor(x / t.step))); const f = x / t.step - i; return t.pts[i] * (1 - f) + t.pts[i + 1] * f; };
+    const groundAt = (x: number) => { const i = Math.max(0, Math.min(t.pts.length - 2, Math.floor(x / t.step))); const f = x / t.step - i; return (t.pts[i] ?? H) * (1 - f) + (t.pts[i + 1] ?? H) * f; };
 
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05); last = now;
