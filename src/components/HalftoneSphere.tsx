@@ -12,9 +12,9 @@ export function HalftoneSphere({ className }: { className?: string }) {
       const y = 1 - (i / (N - 1)) * 2;
       const r = Math.sqrt(1 - y * y);
       const t = i * Math.PI * (3 - Math.sqrt(5));
-      return [Math.cos(t) * r, y, Math.sin(t) * r];
+      return [Math.cos(t) * r, y, Math.sin(t) * r] as [number, number, number];
     });
-    const light = [0.6, -0.5, 0.62];
+    const light: [number, number, number] = [0.6, -0.5, 0.62];
     const draw = (time: number) => {
       const dpr = window.devicePixelRatio || 1;
       const s = c.clientWidth;
