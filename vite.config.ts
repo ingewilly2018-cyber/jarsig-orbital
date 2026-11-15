@@ -16,7 +16,7 @@ export default defineConfig(({ command }) => ({
       },
       server: { entry: "server" },
     }),
-    ...(command === "build" ? [nitro({ defaultPreset: "cloudflare-module" })] : []),
+    ...(command === "build" ? [nitro({ defaultPreset: process.env.NITRO_PRESET ?? "node-server" })] : []),
     react(),
   ],
 }));
