@@ -30,10 +30,14 @@ export function NasaWmtsMap({
   selectedPoint,
   onSelect,
   focusKey,
+  mapHeightClass = "h-[28rem]",
+  showInstructions = true,
 }: {
   selectedPoint: LunarPoint;
   onSelect: (point: LunarPoint) => void;
   focusKey?: string;
+  mapHeightClass?: string;
+  showInstructions?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number; centerX: number; centerY: number; moved: boolean } | null>(null);
@@ -126,7 +130,7 @@ export function NasaWmtsMap({
     <section aria-label="NASA LRO lunar surface map">
       <div
         ref={container}
-        className={`relative h-[28rem] w-full touch-none select-none overflow-hidden border border-border bg-[#09090b] ${drag.current?.moved ? "cursor-grabbing" : "cursor-grab"}`}
+        className={`relative ${mapHeightClass} w-full touch-none select-none overflow-hidden border border-border bg-[#09090b] ${drag.current?.moved ? "cursor-grabbing" : "cursor-grab"}`}
         onPointerDown={beginDrag}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
@@ -147,10 +151,10 @@ export function NasaWmtsMap({
           <span className="border-y border-white/20 px-3 py-1 text-center text-[10px]">{zoom}×</span>
           <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => setZoom((value) => Math.max(1, value - 1))} aria-label="Zoom out" className="px-3 py-2 text-lg leading-none hover:bg-white/15">−</button>
         </div>
-        {tileError && <p className="absolute bottom-3 left-3 z-20 border border-white/20 bg-black/80 px-3 py-2 text-xs text-white">Some NASA image tiles are unavailable at this zoom.</p>}
+        {tileError && <p className="absolute bottom-3 left-3 z-20 max-w-[75%] border border-white/20 bg-black/90 px-3 py-2 text-xs text-white">Some NASA map tiles did not load. <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noreferrer" className="underline underline-offset-2">Open NASA Moon Trek in a new tab</a>.</p>}
         <p className="absolute bottom-3 right-3 z-20 bg-black/75 px-3 py-2 text-[10px] text-white">NASA / JPL · LRO WAC mosaic</p>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Drag to pan · Scroll or use +/− to zoom · Click the map to set the latitude and longitude</p>
+      {showInstructions && <p className="mt-2 text-xs text-muted-foreground">Drag to pan · Scroll or use +/− to zoom · Click the map to set the latitude and longitude</p>}
     </section>
   );
 }

@@ -76,20 +76,12 @@ async function fetchTarget(command: string, site: z.infer<typeof requestSchema>,
 
 export const analyzeLunarSky = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => requestSchema.parse(input))
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ data, context }): Promise<SkyAnalysis> => {
+  .handler(async ({ data }): Promise<SkyAnalysis> => {
     const endTime = new Date(new Date(data.startTime).getTime() + data.durationHours * 60 * 60 * 1000);
     const cacheKeyData = JSON.stringify({ ...data, endTime: endTime.toISOString() });
     const { createHash } = await import("node:crypto");
     const cacheKey = createHash("sha256").update(cacheKeyData).digest("hex");
     const { db } = await import("./db.server");
-    const claims = context.claims as { sub?: string };
-    if (!claims.sub) throw new Response("Unauthorized", { status: 401 });
-    const [account] = await db<{ is_active: boolean }[]>`
-      SELECT is_active FROM users WHERE supabase_user_id = ${claims.sub} LIMIT 1
-    `;
-    if (!account?.is_active) throw new Response("Active account required", { status: 403 });
-
     try {
       const [cached] = await db<{ payload: SkyAnalysis }[]>`
         SELECT payload FROM ephemeris_cache WHERE cache_key = ${cacheKey} AND expires_at > CURRENT_TIMESTAMP LIMIT 1

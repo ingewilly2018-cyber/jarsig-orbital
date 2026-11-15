@@ -63,12 +63,21 @@ export const syncMyDatabaseAccount = createServerFn({ method: "POST" })
     const { db } = await import("./db.server");
     const subject = claims.sub;
     const email = claims.email.toLowerCase();
+    const [existing] = await db<{ supabase_user_id: string | null }[]>`
+      SELECT supabase_user_id FROM users WHERE email = ${email} LIMIT 1
+    `;
+    if (existing?.supabase_user_id && existing.supabase_user_id !== subject) {
+      const { data, error } = await context.supabase.auth.getUser(context.accessToken);
+      if (error || data.user?.email?.toLowerCase() !== email || !data.user.email_confirmed_at) {
+        throw new Response("This account is linked to an older login. Confirm its email address, then sign in again.", { status: 409 });
+      }
+    }
     const username = `${(email.split("@")[0] ?? "pilot").slice(0, 38)}-${subject.slice(0, 8)}`;
     await db`
       INSERT INTO users (username, email, supabase_user_id, is_admin, is_active)
       VALUES (${username}, ${email}, ${subject}, FALSE, TRUE)
       ON CONFLICT (email) DO UPDATE SET
-        supabase_user_id = CASE WHEN users.is_admin THEN users.supabase_user_id ELSE COALESCE(users.supabase_user_id, EXCLUDED.supabase_user_id) END,
+        supabase_user_id = EXCLUDED.supabase_user_id,
         updated_at = CURRENT_TIMESTAMP
     `;
 

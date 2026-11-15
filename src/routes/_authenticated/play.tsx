@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { listMyMissionLogs, listPsrZones, recordMyMissionResult, type MissionLog, type PsrZone } from "@/lib/database.functions";
+import { NasaWmtsMap } from "@/components/NasaWmtsMap";
+import { NasaMoonGlobe } from "@/components/NasaMoonGlobe";
+import { listPsrZones, type MissionLog, type PsrZone } from "@/lib/database.functions";
 import { LUNAR_REFERENCE_SITES, NASA_ARTEMIS_REGIONS_URL, SITE_COORDINATES_SOURCE_URL } from "@/lib/lunar-sites";
 
 export const Route = createFileRoute("/_authenticated/play")({
@@ -28,6 +29,20 @@ const SITES: Site[] = [
 
 const W = 900, H = 560, GRAV = 1.62 * 9, THRUST = 4.2 * 9, TURN = 2.4, BURN = 9;
 const formatLogDate = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toLocaleString();
+const missionHistoryKey = "jarsig.mission-history";
+
+function readMissionHistory(): MissionLog[] {
+  try { return JSON.parse(window.localStorage.getItem(missionHistoryKey) ?? "[]") as MissionLog[]; }
+  catch { return []; }
+}
+
+function saveMissionHistory(siteName: string, outcome: "landed" | "crashed", message: string) {
+  const entry: MissionLog = {
+    id: Date.now(), event_level: outcome === "landed" ? "INFO" : "WARN",
+    message: `Simulation at ${siteName}: ${message}`, mission_time_offset: "T+00:00", logged_at: new Date(),
+  };
+  window.localStorage.setItem(missionHistoryKey, JSON.stringify([entry, ...readMissionHistory()].slice(0, 100)));
+}
 
 function makeTerrain(site: Site) {
   const n = 60, pts: number[] = [];
@@ -46,19 +61,16 @@ function makeTerrain(site: Site) {
 function Play() {
   const [site, setSite] = useState<Site | null>(null);
   return (
-    <main className="min-h-screen bg-background px-6 py-8 font-sans text-foreground">
-      <header className="mx-auto flex max-w-5xl items-center justify-between">
-        <Link to="/" className="text-poster text-lg">JARSIG</Link>
-        <button onClick={() => supabase.auth.signOut()} className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground">Sign out</button>
-      </header>
-      <div className="mx-auto mt-10 max-w-5xl">
-        {site ? <Game site={site} onBack={() => setSite(null)} /> : <SitePicker onPick={setSite} />}
-      </div>
+    <main className="min-h-screen bg-background font-sans text-foreground">
+      {site ? <div className="mx-auto max-w-5xl px-6 py-8"><Game site={site} onBack={() => setSite(null)} /></div> : <SitePicker onPick={setSite} />}
     </main>
   );
 }
 
 function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
+  const [mapPoint, setMapPoint] = useState({ latitude: -85, longitude: 0 });
+  const [viewMode, setViewMode] = useState<"surface" | "globe">("surface");
+  const [country, setCountry] = useState("Cameroon");
   const [zones, setZones] = useState<PsrZone[] | null>(null);
   const [logs, setLogs] = useState<MissionLog[]>([]);
   const [zonesUnavailable, setZonesUnavailable] = useState(false);
@@ -68,24 +80,49 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
     listPsrZones()
       .then((data) => { if (active) setZones(data); })
       .catch(() => { if (active) setZonesUnavailable(true); });
-    listMyMissionLogs().then((data) => { if (active) setLogs(data); }).catch(() => undefined);
+    if (active) setLogs(readMissionHistory());
     return () => { active = false; };
   }, []);
 
   return (
     <div>
+      <section className="relative h-[100svh] min-h-[42rem] overflow-hidden bg-[#08090b] text-white" aria-label="NASA Moon Trek lunar explorer">
+        {viewMode === "surface" ? <NasaWmtsMap selectedPoint={mapPoint} onSelect={setMapPoint} mapHeightClass="h-full" showInstructions={false} /> : <NasaMoonGlobe selectedPoint={mapPoint} className="h-full w-full" />}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-black/75" />
+        <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-5 py-5 sm:px-10">
+          <Link to="/" className="pointer-events-auto text-poster text-lg">JARSIG</Link>
+          <nav className="pointer-events-auto flex flex-wrap justify-end gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest sm:text-xs">
+            <Link to="/science" search={{ latitude: -85, longitude: 0 }} className="hover:text-white/70">Sun / Earth</Link>
+            <Link to="/map" className="hover:text-white/70">Map tools</Link>
+            <Link to="/missions" className="hover:text-white/70">Mission information</Link>
+          </nav>
+        </header>
+        <div className="absolute inset-x-0 top-[18%] z-20 mx-auto max-w-6xl px-6 sm:top-[20%]">
+          <p className="text-[10px] uppercase tracking-[0.35em] text-white/70">NASA Moon Trek · NASA / JPL · Lunar Reconnaissance Orbiter</p>
+          <h1 className="text-poster mt-4 max-w-3xl text-4xl sm:text-6xl">Choose a landing area</h1>
+          <p className="mt-4 max-w-xl text-sm text-white/75">Explore NASA lunar imagery, rotate the Moon in 3D, and select a point on the surface to inspect its coordinates.</p>
+        </div>
+        <aside className="absolute bottom-8 left-6 z-20 max-w-sm border border-white/25 bg-black/70 p-4 backdrop-blur sm:bottom-10 sm:left-10">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-white/60">Selected lunar point</p>
+          <p className="mt-2 font-mono text-sm">{mapPoint.latitude.toFixed(3)}° latitude · {mapPoint.longitude.toFixed(3)}° longitude</p>
+          <p className="mt-2 text-xs text-white/65">{viewMode === "surface" ? "Drag to move · scroll to zoom · click to select" : "Drag the globe to rotate the lunar surface"}</p>
+        </aside>
+        <div className="absolute bottom-8 right-6 z-30 flex gap-2 sm:bottom-10 sm:right-10">
+          <button onClick={() => setViewMode("surface")} aria-pressed={viewMode === "surface"} className={`border border-white/40 px-4 py-3 text-[10px] uppercase tracking-widest backdrop-blur ${viewMode === "surface" ? "bg-white text-black" : "bg-black/60 text-white"}`}>Surface map</button>
+          <button onClick={() => setViewMode("globe")} aria-pressed={viewMode === "globe"} className={`border border-white/40 px-4 py-3 text-[10px] uppercase tracking-widest backdrop-blur ${viewMode === "globe" ? "bg-white text-black" : "bg-black/60 text-white"}`}>3D Moon</button>
+        </div>
+        <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noreferrer" className="absolute right-6 top-24 z-20 text-[10px] text-white/70 underline underline-offset-4 sm:right-10">NASA Moon Trek source</a>
+      </section>
+      <div className="mx-auto max-w-6xl space-y-12 px-6 py-12">
+      <section>
       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Mission select</p>
-      <h1 className="text-poster mt-3 text-5xl">Choose a landing area</h1>
-      <div className="mt-10 grid items-start gap-10 md:grid-cols-2">
-        <section>
-          <div className="aspect-square w-full overflow-hidden border border-border bg-black">
-            <iframe title="NASA Moon Trek interactive lunar surface map" src="https://trek.nasa.gov/moon/" loading="lazy" className="h-full w-full border-0" allowFullScreen />
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>Interactive surface map · NASA / JPL / USGS</span>
-            <Link to="/map" className="underline underline-offset-4">Open map tools</Link>
-          </div>
-        </section>
+      <h2 className="text-poster mt-3 text-4xl">Start a landing simulation</h2>
+      <div className="mt-6 grid gap-8 md:grid-cols-2">
+        <div className="border border-border p-5">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Choose a lunar region</p>
+          <p className="mt-3 text-xs text-muted-foreground">NASA LRO map · {mapPoint.latitude.toFixed(2)}°, {mapPoint.longitude.toFixed(2)}°</p>
+          <Link to="/map" className="mt-3 inline-block text-xs underline underline-offset-4">Open map tools</Link>
+        </div>
         <ul className="divide-y divide-border border-y border-border">
           {SITES.map((s, i) => (
             <li key={s.id}>
@@ -100,6 +137,17 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
           ))}
         </ul>
       </div>
+      </section>
+      <section className="border-t border-border pt-8" aria-labelledby="country-comparison-title">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Moon Trek · Country Mover inspired comparison</p>
+        <h2 id="country-comparison-title" className="mt-3 font-display text-2xl font-light">Compare a country’s area with the Moon</h2>
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <label className="text-sm">Country <select value={country} onChange={(event) => setCountry(event.target.value)} className="ml-3 border border-border bg-background px-3 py-2"><option>Cameroon</option><option>France</option><option>United States</option><option>Canada</option><option>Brazil</option><option>India</option><option>Japan</option></select></label>
+          <p className="text-sm text-muted-foreground">{country} covers about {({ Cameroon: "475,442", France: "551,695", "United States": "9,833,520", Canada: "9,984,670", Brazil: "8,515,767", India: "3,287,263", Japan: "377,975" } as Record<string, string>)[country]} km², compared with the Moon’s 37.9 million km² surface.</p>
+        </div>
+        <div className="mt-4 h-3 max-w-2xl overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-glow" style={{ width: `${Math.max(1, Number(({ Cameroon: 475442, France: 551695, "United States": 9833520, Canada: 9984670, Brazil: 8515767, India: 3287263, Japan: 377975 } as Record<string, number>)[country]) / 37900000 * 100)}%` }} /></div>
+        <p className="mt-2 text-xs text-muted-foreground">Relative area visualization. NASA’s full interactive Country Mover is linked from the Moon Trek source above.</p>
+      </section>
       <section className="mt-12 border-t border-border pt-8" aria-labelledby="artemis-sites-title">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA Artemis south-pole candidates</p>
         <h2 id="artemis-sites-title" className="mt-3 font-display text-2xl font-light">Analyze a representative landing point</h2>
@@ -148,6 +196,7 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
         <h2 className="mt-3 font-display text-2xl font-light">Recent simulator outcomes</h2>
         {logs.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No saved outcomes yet.</p> : <ul className="mt-4 divide-y divide-border border-y border-border">{logs.slice(0, 10).map((log) => <li key={log.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><span><span className="mr-3 text-xs text-muted-foreground">{log.event_level}</span>{log.message}</span><span className="text-xs text-muted-foreground">{formatLogDate(log.logged_at)}</span></li>)}</ul>}
       </section>
+      </div>
     </div>
   );
 }
@@ -201,7 +250,7 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
           const resultNote = ok ? `Touchdown at ${(s.vy / 9).toFixed(1)} m/s with ${s.fuel.toFixed(0)}% fuel left.`
             : !onPad ? "Missed the landing pad." : s.vy >= 20 ? `Too fast: ${(s.vy / 9).toFixed(1)} m/s.` : Math.abs(s.vx) >= 12 ? "Too much sideways drift." : "Not upright.";
           setNote(resultNote);
-          void recordMyMissionResult({ data: { siteName: site.name, outcome: ok ? "landed" : "crashed", message: resultNote } }).catch(() => undefined);
+          saveMissionHistory(site.name, ok ? "landed" : "crashed", resultNote);
         }
       }
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);

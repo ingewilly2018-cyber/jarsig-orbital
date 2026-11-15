@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminOverview, listAdminUsers, listPsrZones, listSurfaceAssets, savePsrZone, updateAdminUser, type AdminUser, type PsrZone, type SurfaceAsset } from "@/lib/database.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Administration — JARSIG" }, { name: "description", content: "Manage JARSIG user accounts." }] }),
+  beforeLoad: () => { throw redirect({ to: "/play" }); },
   component: AdminPage,
 });
 

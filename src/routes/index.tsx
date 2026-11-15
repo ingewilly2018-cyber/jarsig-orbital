@@ -1,6 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { HalftoneSphere } from "@/components/HalftoneSphere";
 
 export const Route = createFileRoute("/")({
@@ -24,12 +23,16 @@ const items = [
 ];
 
 function Index() {
-  const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
-    return () => data.subscription.unsubscribe();
-  }, []);
+  const navigate = useNavigate();
+  const [launching, setLaunching] = useState(false);
+  function accessSite(event: ReactMouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    if (launching) return;
+    setLaunching(true);
+    const mobile = window.innerWidth < 768;
+    window.dispatchEvent(new CustomEvent("jarsig:launch", { detail: { x: mobile ? 0.5 : 0.74, y: mobile ? 0.77 : 0.52 } }));
+    window.setTimeout(() => { void navigate({ to: "/play" }); }, 900);
+  }
   return (
     <main className="min-h-screen bg-background text-foreground font-sans">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
@@ -37,14 +40,7 @@ function Index() {
         <nav className="flex gap-8 text-xs uppercase tracking-widest text-muted-foreground">
           <a href="#mission" className="hover:text-foreground transition-colors">Mission</a>
           <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
-          {signedIn ? (
-            <>
-              <Link to="/play" className="text-foreground hover:text-glow transition-colors">Play</Link>
-              <button onClick={() => supabase.auth.signOut()} className="hover:text-foreground transition-colors uppercase tracking-widest">Sign out</button>
-            </>
-          ) : (
-            <Link to="/auth" className="text-foreground hover:text-glow transition-colors">Sign in</Link>
-          )}
+          <Link to="/play" onClick={accessSite} className="text-foreground hover:text-glow transition-colors">{launching ? "Entering orbit…" : "Access to the site"}</Link>
         </nav>
       </header>
 
@@ -56,8 +52,8 @@ function Index() {
           <p className="mt-4 max-w-sm text-muted-foreground">Looking up, reaching out. A quiet pursuit of the unknown.</p>
           <div className="mt-10 flex flex-wrap gap-4">
           <a href="#mission" className="inline-block border border-border px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:border-foreground">Discover</a>
-          <Link to={signedIn ? "/play" : "/auth"} className="inline-block border border-foreground px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-foreground hover:text-background">
-            {signedIn ? "Start a landing" : "Sign in to play"}
+          <Link to="/play" onClick={accessSite} className="inline-block border border-foreground px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-foreground hover:text-background">
+            {launching ? "Entering orbit…" : "Access to the site"}
           </Link>
           </div>
         </div>

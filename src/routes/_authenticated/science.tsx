@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { analyzeLunarSky, listMySavedAnalyses, saveLunarAnalysis, type SavedAnalysis, type SkyAnalysis, type SkySample } from "@/lib/science.functions";
+import { analyzeLunarSky, type SavedAnalysis, type SkyAnalysis, type SkySample } from "@/lib/science.functions";
 import { listPsrZones, type PsrZone } from "@/lib/database.functions";
 import { LUNAR_REFERENCE_SITES, SITE_COORDINATES_SOURCE_URL } from "@/lib/lunar-sites";
 
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/science")({
 const field = "w-full border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-glow";
 const button = "border border-foreground px-5 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-foreground hover:text-background disabled:opacity-50";
 const formatDate = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toLocaleString();
+const savedAnalysesKey = "jarsig.saved-analyses";
 
 function ElevationChart({ title, samples, color }: { title: string; samples: SkySample[]; color: string }) {
   const points = samples.map((sample, index) => `${samples.length < 2 ? 360 : (index / (samples.length - 1)) * 700 + 10},${10 + ((90 - Math.max(-90, Math.min(90, sample.elevation))) / 180) * 150}`).join(" ");
@@ -63,7 +64,10 @@ function SciencePage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    listMySavedAnalyses().then(setSaved).catch(() => setSaved([]));
+    try {
+      const stored = window.localStorage.getItem(savedAnalysesKey);
+      if (stored) setSaved(JSON.parse(stored) as SavedAnalysis[]);
+    } catch { setSaved([]); }
     listPsrZones().then(setZones).catch(() => setZones([]));
   }, []);
   useEffect(() => { setLatitude(String(search.latitude)); setLongitude(String(search.longitude)); }, [search.latitude, search.longitude]);
@@ -85,13 +89,16 @@ function SciencePage() {
   async function save() {
     if (!analysis) return;
     try {
-      await saveLunarAnalysis({ data: {
-        siteName: `Custom lunar site (${analysis.site.latitude.toFixed(2)}°, ${analysis.site.longitude.toFixed(2)}°)`,
-        latitude: analysis.site.latitude, longitude: analysis.site.longitude, altitudeKm: analysis.site.altitudeKm,
-        startTime: analysis.startTime, endTime: analysis.endTime, results: analysis,
-      } });
-      setMessage("Analysis saved to your account.");
-      setSaved(await listMySavedAnalyses());
+      const item: SavedAnalysis = {
+        id: Date.now(),
+        site_name: `Custom lunar site (${analysis.site.latitude.toFixed(2)}°, ${analysis.site.longitude.toFixed(2)}°)`,
+        latitude: analysis.site.latitude, longitude: analysis.site.longitude,
+        start_time: analysis.startTime, end_time: analysis.endTime, created_at: new Date().toISOString(),
+      };
+      const next = [item, ...saved].slice(0, 30);
+      window.localStorage.setItem(savedAnalysesKey, JSON.stringify(next));
+      setSaved(next);
+      setMessage("Analysis saved in this browser.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save this analysis."); }
   }
 
@@ -141,7 +148,7 @@ function SciencePage() {
         {comparison.length > 0 && <section className="mt-10"><div className="flex justify-between"><h2 className="font-display text-2xl">Site and date comparison</h2><button className="text-xs underline underline-offset-4" onClick={() => setComparison([])}>Clear</button></div><div className="mt-4 overflow-x-auto border-y border-border"><table className="w-full min-w-[42rem] text-left text-sm"><thead className="text-xs uppercase tracking-widest text-muted-foreground"><tr><th className="py-3 pr-4 font-normal">Site / period</th><th className="py-3 pr-4 font-normal">Sunlit samples</th><th className="py-3 pr-4 font-normal">Earth visible</th><th className="py-3 font-normal">Source</th></tr></thead><tbody className="divide-y divide-border">{comparison.map((entry, index) => <tr key={`${entry.result.startTime}-${index}`}><td className="py-3 pr-4">{entry.label}</td><td className="py-3 pr-4">{entry.result.sun.filter((sample) => sample.elevation > 0).length} / {entry.result.sun.length}</td><td className="py-3 pr-4">{entry.result.earth.filter((sample) => sample.elevation > 0).length} / {entry.result.earth.length}</td><td className="py-3">JPL Horizons</td></tr>)}</tbody></table></div><p className="mt-3 text-xs text-muted-foreground">Hourly samples; relief masking and panel characteristics are not included.</p></section>}
 
         <section className="mt-14 border-t border-border pt-8">
-          <h2 className="font-display text-2xl">Your saved analyses</h2>
+          <h2 className="font-display text-2xl">Saved analyses in this browser</h2>
           {saved.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No saved analyses yet.</p> : <ul className="mt-4 divide-y divide-border border-y border-border">{saved.map((item) => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-4 text-sm"><span>{item.site_name} · {item.latitude.toFixed(2)}°, {item.longitude.toFixed(2)}°</span><span className="text-muted-foreground">{formatDate(item.start_time)} — {formatDate(item.end_time)}</span></li>)}</ul>}
         </section>
         <p className="mt-8 text-xs text-muted-foreground">Sunlight duration is estimated from hourly samples, not a high-resolution terrain or electrical power model.</p>

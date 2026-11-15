@@ -36,7 +36,7 @@ async function readFeed(feed: typeof feeds[number]): Promise<MissionBriefing[]> 
   return items.slice(0, 25).flatMap((item) => {
     const title = getTag(item, "title");
     const url = getTag(item, "link");
-    if (!title || !url || !/^https:\/\/(www\.)?nasa\.gov\//i.test(url)) return [];
+    if (!title || !url || !/^https:\/\/(?:[a-z0-9-]+\.)*nasa\.gov\//i.test(url)) return [];
     const dateText = getTag(item, "pubDate");
     const parsedDate = dateText ? new Date(dateText) : null;
     return [{
