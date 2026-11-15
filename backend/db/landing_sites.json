@@ -1,0 +1,59 @@
+{
+  "landing_sites": [
+    {
+      "name": "Shackleton Ridge",
+      "region": "Lunar South Pole",
+      "latitude": -89.9,
+      "longitude": 0.0,
+      "elevation_m": 4200.0,
+      "slope_deg": 3.5,
+      "horizon_obstruction_deg": 1.5,
+      "water_ice_probability_pct": 85,
+      "description": "High solar illumination rim adjacent to permanently shadowed water ice reserves."
+    },
+    {
+      "name": "Nobile Rim 1",
+      "region": "South Pole-Aitken Basin",
+      "latitude": -85.42,
+      "longitude": 37.38,
+      "elevation_m": 1200.0,
+      "slope_deg": 4.2,
+      "horizon_obstruction_deg": 2.5,
+      "water_ice_probability_pct": 78,
+      "description": "Flat plateau region with favorable communication visibility to Earth and accessible ice deposits."
+    },
+    {
+      "name": "de Gerlache Rim 2",
+      "region": "de Gerlache Crater",
+      "latitude": -88.2,
+      "longitude": -64.42,
+      "elevation_m": 3100.0,
+      "slope_deg": 6.1,
+      "horizon_obstruction_deg": 4.0,
+      "water_ice_probability_pct": 90,
+      "description": "Rugged rim adjacent to large permanently shadowed regions with high ice probability."
+    },
+    {
+      "name": "Leibnitz Beta Plateau",
+      "region": "Leibnitz Plateau",
+      "latitude": -85.4,
+      "longitude": 31.58,
+      "elevation_m": 1500.0,
+      "slope_deg": 3.0,
+      "horizon_obstruction_deg": 2.0,
+      "water_ice_probability_pct": 65,
+      "description": "Broad elevated plain offering stable solar power geometry for long-duration surface operations."
+    },
+    {
+      "name": "Malapert Massif",
+      "region": "Malapert Region",
+      "latitude": -85.98,
+      "longitude": -0.42,
+      "elevation_m": 2500.0,
+      "slope_deg": 5.5,
+      "horizon_obstruction_deg": 1.0,
+      "water_ice_probability_pct": 45,
+      "description": "Prominent mountain massif providing excellent line-of-sight communication relay back to Earth."
+    }
+  ]
+}

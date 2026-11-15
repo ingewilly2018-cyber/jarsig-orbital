@@ -1,10 +1,16 @@
+import os
+import json
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
+
+# Explicitly load and override environment variables from the root .env file
+dotenv_path = os.path.join(os.path.dirname(__file__), '../.env')
+load_dotenv(dotenv_path=dotenv_path, override=True)
 
 app = FastAPI(
     title="JARSIG Mission Control API",
@@ -23,8 +29,9 @@ app.add_middleware(
 
 # Database connection helper
 def get_db_connection():
-    # Looks for DATABASE_URL in environment or falls back to local postgres configuration
-    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/jarsig")
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL is not set in environment variables.")
     try:
         conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
         return conn
@@ -73,7 +80,6 @@ def create_telemetry_run(run: TelemetryRunCreate):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING run_id, created_at;
         """
-        import json
         cursor.execute(query, (
             run.operator_id,
             run.target_site_id,
