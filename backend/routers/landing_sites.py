@@ -20,7 +20,7 @@ def get_landing_sites():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM landing_sites ORDER BY id ASC;")
+        cursor.execute("SELECT * FROM landing_sites ORDER BY site_id ASC;")
         sites = cursor.fetchall()
         cursor.close()
         conn.close()
