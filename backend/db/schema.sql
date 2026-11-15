@@ -3,6 +3,8 @@
 -- Target: PostgreSQL 18+
 -- =========================================================================
 
+DROP TABLE IF EXISTS flight_telemetry_runs CASCADE;
+DROP TABLE IF EXISTS landing_sites CASCADE;
 DROP TABLE IF EXISTS mission_logs CASCADE;
 DROP TABLE IF EXISTS surface_assets CASCADE;
 DROP TABLE IF EXISTS psr_zones CASCADE;
@@ -45,7 +47,40 @@ CREATE TABLE psr_zones (
     permanent_shadow BOOLEAN DEFAULT TRUE NOT NULL
 );
 
--- 4. Mission Telemetry & Event Logs Table
+-- 4. Curated Landing Sites Table (For rapid scenario evaluation)
+CREATE TABLE landing_sites (
+    site_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    region VARCHAR(100) NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    elevation_m REAL NOT NULL DEFAULT 0.0,
+    slope_deg REAL NOT NULL DEFAULT 0.0,
+    horizon_obstruction_deg REAL NOT NULL DEFAULT 0.0, -- Crater rim angle blocking sun/earth
+    water_ice_probability_pct INTEGER CHECK (water_ice_probability_pct BETWEEN 0 AND 100),
+    description TEXT
+);
+
+CREATE INDEX idx_landing_sites_coords ON landing_sites(latitude, longitude);
+
+-- 5. AI Training Telemetry Runs Table (Captures user gameplay/training data)
+CREATE TABLE flight_telemetry_runs (
+    run_id SERIAL PRIMARY KEY,
+    operator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    target_site_id INTEGER REFERENCES landing_sites(site_id) ON DELETE CASCADE,
+    success BOOLEAN NOT NULL DEFAULT FALSE,
+    final_fuel_pct REAL NOT NULL,
+    touchdown_descent_rate REAL NOT NULL, -- m/s
+    touchdown_drift_rate REAL NOT NULL,   -- m/s
+    flight_duration_sec INTEGER NOT NULL,
+    trajectory_payload JSONB NOT NULL,    -- Stores time-series array of position, velocity, and throttle inputs
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX idx_telemetry_operator ON flight_telemetry_runs(operator_id);
+CREATE INDEX idx_telemetry_success ON flight_telemetry_runs(success);
+
+-- 6. Mission Telemetry & Event Logs Table
 CREATE TABLE mission_logs (
     id SERIAL PRIMARY KEY,
     operator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
