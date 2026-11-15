@@ -12,7 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedChangePasswordRouteImport } from './routes/_authenticated/change-password'
+import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedMissionsRouteImport } from './routes/_authenticated/missions'
 import { Route as AuthenticatedPlayRouteImport } from './routes/_authenticated/play'
+import { Route as AuthenticatedScienceRouteImport } from './routes/_authenticated/science'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +33,102 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedChangePasswordRoute =
+  AuthenticatedChangePasswordRouteImport.update({
+    id: '/change-password',
+    path: '/change-password',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMissionsRoute = AuthenticatedMissionsRouteImport.update({
+  id: '/missions',
+  path: '/missions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlayRoute = AuthenticatedPlayRouteImport.update({
   id: '/play',
   path: '/play',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedScienceRoute = AuthenticatedScienceRouteImport.update({
+  id: '/science',
+  path: '/science',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/change-password': typeof AuthenticatedChangePasswordRoute
+  '/map': typeof AuthenticatedMapRoute
+  '/missions': typeof AuthenticatedMissionsRoute
   '/play': typeof AuthenticatedPlayRoute
+  '/science': typeof AuthenticatedScienceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/change-password': typeof AuthenticatedChangePasswordRoute
+  '/map': typeof AuthenticatedMapRoute
+  '/missions': typeof AuthenticatedMissionsRoute
   '/play': typeof AuthenticatedPlayRoute
+  '/science': typeof AuthenticatedScienceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/change-password': typeof AuthenticatedChangePasswordRoute
+  '/_authenticated/map': typeof AuthenticatedMapRoute
+  '/_authenticated/missions': typeof AuthenticatedMissionsRoute
   '/_authenticated/play': typeof AuthenticatedPlayRoute
+  '/_authenticated/science': typeof AuthenticatedScienceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/play'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/change-password'
+    | '/map'
+    | '/missions'
+    | '/play'
+    | '/science'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/play'
-  id: '__root__' | '/' | '/_authenticated' | '/auth' | '/_authenticated/play'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/change-password'
+    | '/map'
+    | '/missions'
+    | '/play'
+    | '/science'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/admin'
+    | '/_authenticated/change-password'
+    | '/_authenticated/map'
+    | '/_authenticated/missions'
+    | '/_authenticated/play'
+    | '/_authenticated/science'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +160,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/change-password': {
+      id: '/_authenticated/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof AuthenticatedChangePasswordRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/map': {
+      id: '/_authenticated/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AuthenticatedMapRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/missions': {
+      id: '/_authenticated/missions'
+      path: '/missions'
+      fullPath: '/missions'
+      preLoaderRoute: typeof AuthenticatedMissionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/play': {
       id: '/_authenticated/play'
       path: '/play'
@@ -95,15 +195,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlayRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/science': {
+      id: '/_authenticated/science'
+      path: '/science'
+      fullPath: '/science'
+      preLoaderRoute: typeof AuthenticatedScienceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedChangePasswordRoute: typeof AuthenticatedChangePasswordRoute
+  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedMissionsRoute: typeof AuthenticatedMissionsRoute
   AuthenticatedPlayRoute: typeof AuthenticatedPlayRoute
+  AuthenticatedScienceRoute: typeof AuthenticatedScienceRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedChangePasswordRoute: AuthenticatedChangePasswordRoute,
+  AuthenticatedMapRoute: AuthenticatedMapRoute,
+  AuthenticatedMissionsRoute: AuthenticatedMissionsRoute,
   AuthenticatedPlayRoute: AuthenticatedPlayRoute,
+  AuthenticatedScienceRoute: AuthenticatedScienceRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

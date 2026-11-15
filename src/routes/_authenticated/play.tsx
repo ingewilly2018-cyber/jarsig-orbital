@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { listMyMissionLogs, listPsrZones, recordMyMissionResult, type MissionLog, type PsrZone } from "@/lib/database.functions";
+import { LUNAR_REFERENCE_SITES, NASA_ARTEMIS_REGIONS_URL, SITE_COORDINATES_SOURCE_URL } from "@/lib/lunar-sites";
 
 export const Route = createFileRoute("/_authenticated/play")({
   head: () => ({
@@ -25,6 +27,7 @@ const SITES: Site[] = [
 ];
 
 const W = 900, H = 560, GRAV = 1.62 * 9, THRUST = 4.2 * 9, TURN = 2.4, BURN = 9;
+const formatLogDate = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toLocaleString();
 
 function makeTerrain(site: Site) {
   const n = 60, pts: number[] = [];
@@ -56,17 +59,33 @@ function Play() {
 }
 
 function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
+  const [zones, setZones] = useState<PsrZone[] | null>(null);
+  const [logs, setLogs] = useState<MissionLog[]>([]);
+  const [zonesUnavailable, setZonesUnavailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    listPsrZones()
+      .then((data) => { if (active) setZones(data); })
+      .catch(() => { if (active) setZonesUnavailable(true); });
+    listMyMissionLogs().then((data) => { if (active) setLogs(data); }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
   return (
     <div>
       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Mission select</p>
       <h1 className="text-poster mt-3 text-5xl">Choose a landing area</h1>
-      <div className="mt-10 grid items-center gap-10 md:grid-cols-2">
-        <div className="relative mx-auto aspect-square w-full max-w-sm rounded-full border border-border" style={{ background: "radial-gradient(circle at 35% 30%, oklch(0.55 0 0), oklch(0.2 0 0) 70%)" }}>
-          {SITES.map((s) => (
-            <button key={s.id} onClick={() => onPick(s)} title={s.name} style={{ left: `${s.x}%`, top: `${s.y}%` }}
-              className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-glow bg-background transition-transform hover:scale-150" />
-          ))}
-        </div>
+      <div className="mt-10 grid items-start gap-10 md:grid-cols-2">
+        <section>
+          <div className="aspect-square w-full overflow-hidden border border-border bg-black">
+            <iframe title="NASA Moon Trek interactive lunar surface map" src="https://trek.nasa.gov/moon/" loading="lazy" className="h-full w-full border-0" allowFullScreen />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>Interactive surface map · NASA / JPL / USGS</span>
+            <Link to="/map" className="underline underline-offset-4">Open map tools</Link>
+          </div>
+        </section>
         <ul className="divide-y divide-border border-y border-border">
           {SITES.map((s, i) => (
             <li key={s.id}>
@@ -81,6 +100,54 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
           ))}
         </ul>
       </div>
+      <section className="mt-12 border-t border-border pt-8" aria-labelledby="artemis-sites-title">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA Artemis south-pole candidates</p>
+        <h2 id="artemis-sites-title" className="mt-3 font-display text-2xl font-light">Analyze a representative landing point</h2>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">These are representative coordinates from a published landing-site study in NASA’s candidate regions. They are analysis points, not final mission selections.</p>
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {LUNAR_REFERENCE_SITES.map((point) => (
+            <li key={point.id} className="border border-border p-4">
+              <p className="font-display text-lg">{point.name} <span className="text-xs text-muted-foreground">{point.id}</span></p>
+              <p className="mt-1 text-xs text-muted-foreground">{point.latitude.toFixed(3)}°, {point.longitude.toFixed(3)}° east</p>
+              <Link to="/science" search={{ latitude: point.latitude, longitude: point.longitude }} className="mt-3 inline-block text-xs underline underline-offset-4">Analyze with JPL Horizons</Link>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs text-muted-foreground">Region status: <a href={NASA_ARTEMIS_REGIONS_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">NASA’s updated candidate list</a> · Representative coordinates: <a href={SITE_COORDINATES_SOURCE_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">peer-reviewed study</a>.</p>
+      </section>
+      <section className="mt-14 border-t border-border pt-8" aria-labelledby="psr-catalog-title">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">PostgreSQL mission data</p>
+        <h2 id="psr-catalog-title" className="mt-3 font-display text-2xl font-light">Permanent shadow regions</h2>
+        {zones === null && !zonesUnavailable && <p className="mt-3 text-sm text-muted-foreground">Loading regions…</p>}
+        {zonesUnavailable && <p className="mt-3 text-sm text-muted-foreground">Region data is unavailable. Configure DATABASE_URL and load the database schema to display it.</p>}
+        {zones?.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No regions are recorded in the database yet.</p>}
+        {!!zones?.length && (
+          <div className="mt-5 overflow-x-auto border-y border-border">
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="text-xs uppercase tracking-widest text-muted-foreground">
+                <tr><th className="py-3 pr-4 font-normal">Crater</th><th className="py-3 pr-4 font-normal">Latitude</th><th className="py-3 pr-4 font-normal">Longitude</th><th className="py-3 pr-4 font-normal">Radius</th><th className="py-3 pr-4 font-normal">Ice probability</th><th className="py-3 font-normal">Data source</th></tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {zones.map((zone) => (
+                  <tr key={zone.id}>
+                    <td className="py-3 pr-4">{zone.crater_name}</td>
+                    <td className="py-3 pr-4">{zone.latitude.toFixed(3)}°</td>
+                    <td className="py-3 pr-4">{zone.longitude.toFixed(3)}°</td>
+                    <td className="py-3 pr-4">{zone.radius_km} km</td>
+                    <td className="py-3 pr-4">{zone.ice_probability_pct == null ? "Not recorded" : `${zone.ice_probability_pct}%`}</td>
+                    <td className="py-3">{zone.source_url ? <a href={zone.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{zone.source_name ?? "Source"}</a> : zone.source_name ?? "Not recorded"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <section className="mt-12 border-t border-border pt-8">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Your database mission history</p>
+        <h2 className="mt-3 font-display text-2xl font-light">Recent simulator outcomes</h2>
+        {logs.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No saved outcomes yet.</p> : <ul className="mt-4 divide-y divide-border border-y border-border">{logs.slice(0, 10).map((log) => <li key={log.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><span><span className="mr-3 text-xs text-muted-foreground">{log.event_level}</span>{log.message}</span><span className="text-xs text-muted-foreground">{formatLogDate(log.logged_at)}</span></li>)}</ul>}
+      </section>
     </div>
   );
 }
@@ -131,8 +198,10 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
           const deg = Math.abs(((s.a * 180) / Math.PI) % 360);
           const ok = onPad && s.vy < 20 && Math.abs(s.vx) < 12 && deg < 12;
           setStatus(ok ? "landed" : "crashed");
-          setNote(ok ? `Touchdown at ${(s.vy / 9).toFixed(1)} m/s with ${s.fuel.toFixed(0)}% fuel left.`
-            : !onPad ? "Missed the landing pad." : s.vy >= 20 ? `Too fast: ${(s.vy / 9).toFixed(1)} m/s.` : Math.abs(s.vx) >= 12 ? "Too much sideways drift." : "Not upright.");
+          const resultNote = ok ? `Touchdown at ${(s.vy / 9).toFixed(1)} m/s with ${s.fuel.toFixed(0)}% fuel left.`
+            : !onPad ? "Missed the landing pad." : s.vy >= 20 ? `Too fast: ${(s.vy / 9).toFixed(1)} m/s.` : Math.abs(s.vx) >= 12 ? "Too much sideways drift." : "Not upright.";
+          setNote(resultNote);
+          void recordMyMissionResult({ data: { siteName: site.name, outcome: ok ? "landed" : "crashed", message: resultNote } }).catch(() => undefined);
         }
       }
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
