@@ -52,11 +52,11 @@ function MissionBriefingsPage() {
   const updates = briefings?.items.filter((item) => item.category !== "upcoming") ?? [];
   const card = "border-t border-border py-5";
   return (
-    <main className="min-h-screen bg-background px-6 py-10 font-sans text-foreground">
+    <main className="min-h-screen bg-background px-4 py-7 font-sans text-foreground sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA official feeds</p><h1 className="text-poster mt-3 text-4xl sm:text-5xl">Mission briefings</h1><p className="mt-4 max-w-3xl text-sm text-muted-foreground">NASA Artemis updates and launch information. New items are checked every minute and added to the briefing list.</p></div>
-          <button onClick={() => { setLoading(true); void refresh(); }} disabled={loading} className="border border-foreground px-5 py-3 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background disabled:opacity-50">{loading ? "Refreshing…" : "Refresh now"}</button>
+          <div className="min-w-0"><p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA official feeds</p><h1 className="text-poster mt-3 text-3xl sm:text-5xl">Mission briefings</h1><p className="mt-4 max-w-3xl text-sm text-muted-foreground">NASA Artemis updates and launch information. New items are checked every minute and added to the briefing list.</p></div>
+          <button onClick={() => { setLoading(true); void refresh(); }} disabled={loading} className="w-full border border-foreground px-5 py-3 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background disabled:opacity-50 sm:w-auto">{loading ? "Refreshing…" : "Refresh now"}</button>
         </div>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>{briefings ? `Checked ${briefings.refreshedAt === "Cached NASA feed" ? briefings.refreshedAt : new Date(briefings.refreshedAt).toLocaleString()} · auto-refresh every minute` : "Checking NASA for mission updates…"}</span>
@@ -78,9 +78,9 @@ function MissionBriefingsPage() {
         <section className="mt-14 border-t border-border pt-8" aria-labelledby="nasa-moon-gallery-title">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA Image and Video Library API</p>
           <h2 id="nasa-moon-gallery-title" className="text-poster mt-3 text-3xl">Explore NASA Moon imagery</h2>
-          <form onSubmit={(event) => { event.preventDefault(); void searchImages(imageQuery); }} className="mt-5 flex max-w-xl gap-3">
+          <form onSubmit={(event) => { event.preventDefault(); void searchImages(imageQuery); }} className="mt-5 flex max-w-xl flex-col gap-3 sm:flex-row">
             <input value={imageQuery} onChange={(event) => setImageQuery(event.target.value)} aria-label="Search NASA Moon images" className="min-w-0 flex-1 border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-glow" placeholder="Try Artemis, lunar south pole…" />
-            <button disabled={imagesLoading || !imageQuery.trim()} className="border border-foreground px-4 py-2 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background disabled:opacity-50">{imagesLoading ? "Searching…" : "Search"}</button>
+            <button disabled={imagesLoading || !imageQuery.trim()} className="w-full border border-foreground px-4 py-3 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background disabled:opacity-50 sm:w-auto sm:py-2">{imagesLoading ? "Searching…" : "Search"}</button>
           </form>
           {imagesError && <p role="status" className="mt-4 text-sm text-muted-foreground">{imagesError}</p>}
           {imagesLoading && moonImages.length === 0 && <p className="mt-5 text-sm text-muted-foreground">Loading live results from NASA…</p>}

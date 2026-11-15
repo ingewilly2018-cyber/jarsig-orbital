@@ -42,7 +42,7 @@ export function NasaWmtsMap({
   onSelect,
   focusKey,
   footprint = { rings: [], enclosure: [] },
-  mapHeightClass = "h-[28rem]",
+  mapHeightClass = "h-[55svh] min-h-[20rem] sm:h-[28rem]",
   showInstructions = true,
 }: {
   selectedPoint: LunarPoint;

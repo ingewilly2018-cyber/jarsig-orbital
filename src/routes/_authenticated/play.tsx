@@ -124,7 +124,7 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
         </div>
         <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noreferrer" className="absolute right-6 top-24 z-20 text-[10px] text-white/70 underline underline-offset-4 sm:right-10">NASA Moon Trek source</a>
       </section>
-      <div className="mx-auto max-w-6xl space-y-12 px-6 py-12">
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:space-y-12 sm:px-6 sm:py-12">
       <section>
       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Mission select</p>
       <h2 className="text-poster mt-3 text-4xl">Start a landing simulation</h2>
@@ -305,7 +305,7 @@ function Game({ site, onBack }: { site: Site; onBack: () => void }) {
         <canvas ref={canvas} width={W} height={H} className="w-full border border-border" />
         {status !== "flying" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 text-center">
-            <h2 className="text-poster text-5xl">{status === "landed" ? "The Eagle has landed" : "Mission lost"}</h2>
+            <h2 className="text-poster text-3xl sm:text-5xl">{status === "landed" ? "The Eagle has landed" : "Mission lost"}</h2>
             <p className="mt-3 text-sm text-muted-foreground">{note}</p>
             <button onClick={() => setRound((r) => r + 1)} className="mt-6 border border-foreground px-8 py-3 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background">Try again</button>
           </div>

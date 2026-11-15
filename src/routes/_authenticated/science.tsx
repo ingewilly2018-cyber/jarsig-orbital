@@ -107,10 +107,10 @@ function SciencePage() {
   const sunWindows = analysis ? visibilityWindows(analysis.sun) : [];
   const earthWindows = analysis ? visibilityWindows(analysis.earth) : [];
   return (
-    <main className="min-h-screen bg-background px-6 py-10 font-sans text-foreground">
+    <main className="min-h-screen bg-background px-4 py-7 font-sans text-foreground sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">JPL Horizons · lunar topocentric observer</p>
-        <h1 className="text-poster mt-3 text-5xl md:text-6xl">Sun / Earth visibility</h1>
+        <h1 className="text-poster mt-3 text-4xl sm:text-5xl md:text-6xl">Sun / Earth visibility</h1>
         <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">Set an east longitude and latitude on the Moon. Horizons calculates apparent azimuth and elevation from this surface point. Horizon visibility here is geometric and does not include local terrain masking.</p>
 
         <label className="mt-8 block max-w-md text-xs text-muted-foreground">Load a published south-pole reference point<select className={`${field} mt-2`} defaultValue="" onChange={(event) => { const point = LUNAR_REFERENCE_SITES.find((site) => site.id === event.target.value); if (point) { setLatitude(String(point.latitude)); setLongitude(String(point.longitude)); } }}><option value="">Custom coordinates</option>{LUNAR_REFERENCE_SITES.map((point) => <option key={point.id} value={point.id}>{point.name} · {point.id} ({point.latitude.toFixed(2)}°, {point.longitude.toFixed(2)}°)</option>)}</select><span className="mt-2 block">Representative points from a published Artemis candidate-site study · <a href={SITE_COORDINATES_SOURCE_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">source</a></span></label>
@@ -127,7 +127,7 @@ function SciencePage() {
 
         {message && <p className="mt-5 border border-border px-4 py-3 text-sm" role="status">{message}</p>}
         {analysis && <>
-          <section className="mt-8 grid gap-4 sm:grid-cols-3">
+          <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="border border-border p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Sun above horizon</p><p className="mt-2 text-3xl">{illuminatedSamples} <span className="text-base text-muted-foreground">of {analysis.sun.length} samples</span></p></div>
             <div className="border border-border p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Earth above horizon</p><p className="mt-2 text-3xl">{earthVisibleSamples} <span className="text-base text-muted-foreground">of {analysis.earth.length} samples</span></p></div>
             <div className="border border-border p-5"><p className="text-xs uppercase tracking-widest text-muted-foreground">Surface site</p><p className="mt-2 text-lg">{analysis.site.latitude.toFixed(3)}°, {analysis.site.longitude.toFixed(3)}°</p></div>

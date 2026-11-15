@@ -61,10 +61,10 @@ function AdminPage() {
 
   const card = "border border-border p-5";
   return (
-    <main className="min-h-screen bg-background px-6 py-10 font-sans text-foreground">
+    <main className="min-h-screen bg-background px-4 py-7 font-sans text-foreground sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Access restricted · Database roles</p>
-        <h1 className="text-poster mt-3 text-5xl">Administration</h1>
+        <h1 className="text-poster mt-3 text-4xl sm:text-5xl">Administration</h1>
         {error && <p className="mt-6 border border-destructive px-4 py-3 text-sm" role="alert">{error}</p>}
         {overview && <>
           <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -73,7 +73,7 @@ function AdminPage() {
           <section className="mt-10">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div><h2 className="font-display text-2xl">User accounts</h2><p className="mt-1 text-sm text-muted-foreground">Promote existing users, update account status, and review recent sign-ups.</p></div>
-              <div className="flex gap-3"><input aria-label="Search users" className="border border-border bg-transparent px-3 py-2 text-sm" placeholder="Name or email" value={search} onChange={(e) => setSearch(e.target.value)} /><select aria-label="Filter by role" className="border border-border bg-background px-3 py-2 text-sm" value={role} onChange={(e) => setRole(e.target.value as typeof role)}><option value="all">All roles</option><option value="USER">Users</option><option value="ADMIN">Admins</option></select></div>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row"><input aria-label="Search users" className="min-w-0 border border-border bg-transparent px-3 py-2 text-sm" placeholder="Name or email" value={search} onChange={(e) => setSearch(e.target.value)} /><select aria-label="Filter by role" className="border border-border bg-background px-3 py-2 text-sm" value={role} onChange={(e) => setRole(e.target.value as typeof role)}><option value="all">All roles</option><option value="USER">Users</option><option value="ADMIN">Admins</option></select></div>
             </div>
             <div className="mt-5 overflow-x-auto border-y border-border">
               <table className="w-full min-w-[48rem] text-left text-sm">

@@ -151,6 +151,12 @@
 }
 
 @layer base {
+  html,
+  body {
+    min-width: 320px;
+    overflow-x: clip;
+  }
+
   * {
     border-color: var(--color-border);
   }
