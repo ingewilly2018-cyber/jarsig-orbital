@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getMissionBriefings, type MissionBriefing } from "@/lib/missions.functions";
 import { searchMoonImages, type MoonImage } from "@/lib/nasa.functions";
 
@@ -18,15 +18,24 @@ function MissionBriefingsPage() {
   const [moonImages, setMoonImages] = useState<MoonImage[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [imagesError, setImagesError] = useState("");
+  const knownItems = useRef(new Map<string, MissionBriefing>());
   const refresh = useCallback(async () => {
-    try { setBriefings(await getMissionBriefings()); setError(""); }
+    try {
+      const latest = await getMissionBriefings();
+      for (const item of latest.items) knownItems.current.set(item.url, item);
+      const items = [...knownItems.current.values()]
+        .sort((a, b) => (b.publishedAt ?? "0000").localeCompare(a.publishedAt ?? "0000"))
+        .slice(0, 100);
+      setBriefings({ ...latest, items });
+      setError("");
+    }
     catch (err) { setError(err instanceof Error ? err.message : "NASA mission updates are temporarily unavailable."); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => { void refresh(); }, 15 * 60 * 1000);
+    const timer = window.setInterval(() => { void refresh(); }, 60 * 1000);
     return () => window.clearInterval(timer);
   }, [refresh]);
 
@@ -46,14 +55,14 @@ function MissionBriefingsPage() {
     <main className="min-h-screen bg-background px-6 py-10 font-sans text-foreground">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA official feeds</p><h1 className="text-poster mt-3 text-5xl">Mission briefings</h1><p className="mt-4 max-w-3xl text-sm text-muted-foreground">A continuously refreshed stream of NASA Artemis updates and the agency’s published launch schedule. Planned dates can change; the official schedule is the authority.</p></div>
+          <div><p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA official feeds</p><h1 className="text-poster mt-3 text-4xl sm:text-5xl">Mission briefings</h1><p className="mt-4 max-w-3xl text-sm text-muted-foreground">NASA Artemis updates and launch information. New items are checked every minute and added to the briefing list.</p></div>
           <button onClick={() => { setLoading(true); void refresh(); }} disabled={loading} className="border border-foreground px-5 py-3 text-xs uppercase tracking-widest hover:bg-foreground hover:text-background disabled:opacity-50">{loading ? "Refreshing…" : "Refresh now"}</button>
         </div>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>{briefings ? `Last updated ${briefings.refreshedAt === "Cached NASA feed" ? briefings.refreshedAt : new Date(briefings.refreshedAt).toLocaleString()}` : "Updates checked on page load and every 15 minutes"}</span>
+          <span>{briefings ? `Checked ${briefings.refreshedAt === "Cached NASA feed" ? briefings.refreshedAt : new Date(briefings.refreshedAt).toLocaleString()} · auto-refresh every minute` : "Checking NASA for mission updates…"}</span>
           <a href={briefings?.scheduleUrl ?? "https://www.nasa.gov/event-type/launch-schedule/"} target="_blank" rel="noreferrer" className="text-foreground underline underline-offset-4">NASA launch schedule</a>
         </div>
-        {error && <p className="mt-5 border border-border px-4 py-3 text-sm" role="status">{error}</p>}
+        {error && <p className="mt-5 border border-border px-4 py-3 text-sm" role="status">Live NASA updates could not be loaded. <a className="underline underline-offset-4" href="https://www.nasa.gov/humans-in-space/artemis/" target="_blank" rel="noreferrer">Open Artemis updates</a> · <a className="underline underline-offset-4" href="https://www.nasa.gov/missions/" target="_blank" rel="noreferrer">Open NASA mission archive</a>. The site will retry in one minute.</p>}
         {loading && !briefings && <p className="mt-8 text-sm text-muted-foreground">Loading NASA mission information…</p>}
         {briefings && <div className="mt-10 grid gap-12 lg:grid-cols-2">
           <section>
@@ -78,7 +87,7 @@ function MissionBriefingsPage() {
           {!imagesLoading && !imagesError && moonImages.length === 0 && <p className="mt-5 text-sm text-muted-foreground">No images matched that search. Try “Moon”, “Apollo”, or “Artemis”.</p>}
           {moonImages.length > 0 && <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{moonImages.map((image) => <article key={image.id} className="border border-border"><img src={image.thumb} alt={image.title} loading="lazy" className="aspect-[4/3] w-full bg-black object-cover" /><div className="p-3"><h3 className="line-clamp-2 font-display text-base">{image.title}</h3><p className="mt-1 text-xs text-muted-foreground">{image.date ? new Date(image.date).toLocaleDateString() : "NASA archive"}</p><p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{image.description}</p><a href={`https://images.nasa.gov/details/${encodeURIComponent(image.id)}`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs underline underline-offset-4">View NASA archive record</a></div></article>)}</div>}
         </section>
-        <p className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">This page refreshes NASA’s public launch schedule and Artemis updates every 15 minutes while it is open. It does not provide spacecraft telemetry or predict launch dates.</p>
+        <p className="mt-12 border-t border-border pt-5 text-xs text-muted-foreground">NASA’s published schedule can change. This briefing refreshes every minute; it does not provide spacecraft telemetry or predict launch dates.</p>
       </div>
     </main>
   );

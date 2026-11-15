@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import type { CountryFootprint } from "@/lib/country-footprints";
 
 const TILE_BASE = "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm";
 const VERTEX_SHADER = `
@@ -22,17 +23,14 @@ const VERTEX_SHADER = `
 const FRAGMENT_SHADER = `
   precision mediump float;
   uniform sampler2D uTexture;
-  uniform vec2 uPoint;
-  uniform float uShowPoint;
+  uniform sampler2D uOverlay;
   varying vec2 vUv;
   varying vec3 vNormal;
   void main() {
     vec3 base = texture2D(uTexture, vUv).rgb;
     float light = 0.20 + 0.80 * max(dot(normalize(vNormal), normalize(vec3(-0.45, 0.18, 1.0))), 0.0);
-    float dx = abs(fract(vUv.x - uPoint.x + 0.5) - 0.5);
-    float dy = abs(vUv.y - uPoint.y);
-    float marker = 1.0 - smoothstep(0.008, 0.014, length(vec2(dx, dy)));
-    vec3 color = mix(base * light, vec3(1.0, 0.88, 0.48), marker * uShowPoint);
+    vec4 country = texture2D(uOverlay, vUv);
+    vec3 color = mix(base * light, vec3(1.0, 0.82, 0.08), country.a * 0.9);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -59,6 +57,18 @@ function globeVertices() {
     push(row, column + 1); push(row + 1, column); push(row + 1, column + 1);
   }
   return new Float32Array(points);
+}
+
+function traceSmoothRing(context: CanvasRenderingContext2D, points: { x: number; y: number }[]) {
+  if (points.length < 3) return;
+  const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const start = midpoint(points[points.length - 1]!, points[0]!);
+  context.moveTo(start.x, start.y);
+  points.forEach((point, index) => {
+    const next = midpoint(point, points[(index + 1) % points.length]!);
+    context.quadraticCurveTo(point.x, point.y, next.x, next.y);
+  });
+  context.closePath();
 }
 
 function loadMoonTexture(gl: WebGLRenderingContext, texture: WebGLTexture, onReady: () => void, onError: () => void) {
@@ -92,13 +102,12 @@ function loadMoonTexture(gl: WebGLRenderingContext, texture: WebGLTexture, onRea
   return () => { disposed = true; };
 }
 
-export function NasaMoonGlobe({ className = "", selectedPoint }: { className?: string; selectedPoint: { latitude: number; longitude: number } }) {
+export function NasaMoonGlobe({ className = "", footprint = { rings: [], enclosure: [] } }: { className?: string; footprint?: CountryFootprint }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const selectedPointRef = useRef(selectedPoint);
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+  const overlayTextureRef = useRef<WebGLTexture | null>(null);
   const rotation = useRef({ yaw: 0, pitch: -0.18, dragX: 0, dragY: 0, active: false });
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
-
-  useEffect(() => { selectedPointRef.current = selectedPoint; }, [selectedPoint]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -115,7 +124,8 @@ export function NasaMoonGlobe({ className = "", selectedPoint }: { className?: s
     gl.useProgram(program);
     const buffer = gl.createBuffer();
     const texture = gl.createTexture();
-    if (!buffer || !texture) { setStatus("fallback"); return; }
+    const overlayTexture = gl.createTexture();
+    if (!buffer || !texture || !overlayTexture) { setStatus("fallback"); return; }
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     const vertices = globeVertices();
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
@@ -127,6 +137,17 @@ export function NasaMoonGlobe({ className = "", selectedPoint }: { className?: s
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([86, 90, 96, 255]));
     gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, overlayTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+    gl.uniform1i(gl.getUniformLocation(program, "uOverlay"), 1);
+    gl.activeTexture(gl.TEXTURE0);
+    glRef.current = gl;
+    overlayTextureRef.current = overlayTexture;
     gl.enable(gl.DEPTH_TEST); gl.clearColor(0.025, 0.035, 0.055, 1);
     const stopTexture = loadMoonTexture(gl, texture, () => setStatus("ready"), () => setStatus("fallback"));
 
@@ -143,14 +164,63 @@ export function NasaMoonGlobe({ className = "", selectedPoint }: { className?: s
       gl.uniform1f(gl.getUniformLocation(program, "uYaw"), yaw);
       gl.uniform1f(gl.getUniformLocation(program, "uPitch"), motion.pitch);
       gl.uniform1f(gl.getUniformLocation(program, "uAspect"), width / height);
-      gl.uniform2f(gl.getUniformLocation(program, "uPoint"), (selectedPointRef.current.longitude + 180) / 360, (selectedPointRef.current.latitude + 90) / 180);
-      gl.uniform1f(gl.getUniformLocation(program, "uShowPoint"), 1);
       gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 5);
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(frame); stopTexture(); gl.deleteTexture(texture); gl.deleteBuffer(buffer); gl.deleteProgram(program); };
+    return () => { cancelAnimationFrame(frame); stopTexture(); glRef.current = null; overlayTextureRef.current = null; gl.deleteTexture(texture); gl.deleteTexture(overlayTexture); gl.deleteBuffer(buffer); gl.deleteProgram(program); };
   }, []);
+
+  useEffect(() => {
+    const gl = glRef.current;
+    const texture = overlayTextureRef.current;
+    if (!gl || !texture) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 512;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.strokeStyle = "#ffd52d";
+    context.fillStyle = "rgba(255,213,45,.2)";
+    context.lineWidth = 2.5;
+    context.lineJoin = "round";
+    const enclosureCoordinates = footprint.enclosure.map(({ latitude, longitude }) => ({ x: (longitude + 180) / 360 * canvas.width, y: (90 - latitude) / 180 * canvas.height }));
+    const coordinates = footprint.rings.map((ring) => {
+      let previousX: number | null = null;
+      return ring.map(({ latitude, longitude }) => {
+        let x = (longitude + 180) / 360 * canvas.width;
+        if (previousX !== null) {
+          while (x - previousX > canvas.width / 2) x -= canvas.width;
+          while (previousX - x > canvas.width / 2) x += canvas.width;
+        }
+        previousX = x;
+        return { x, y: (90 - latitude) / 180 * canvas.height };
+      });
+    });
+    for (const shift of [-canvas.width, 0, canvas.width]) {
+      if (enclosureCoordinates.length > 2) {
+        context.beginPath();
+        traceSmoothRing(context, enclosureCoordinates.map(({ x, y }) => ({ x: x + shift, y })));
+        context.strokeStyle = "rgba(255,213,45,.6)";
+        context.lineWidth = 1.5;
+        context.setLineDash([6, 5]);
+        context.stroke();
+        context.setLineDash([]);
+      }
+      context.beginPath();
+      for (const ring of coordinates) {
+        if (ring.length < 3) continue;
+        traceSmoothRing(context, ring.map(({ x, y }) => ({ x: x + shift, y })));
+      }
+      context.fill("evenodd");
+      context.stroke();
+    }
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.activeTexture(gl.TEXTURE0);
+  }, [footprint]);
 
   function startDrag(event: ReactPointerEvent<HTMLCanvasElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);

@@ -65,7 +65,7 @@ async function readLaunchSchedule(): Promise<MissionBriefing[]> {
   const html = await response.text();
   const cards = html.match(/<article\b[\s\S]*?<\/article>/gi) ?? [];
   const now = new Date();
-  return cards.flatMap((card) => {
+  const cardItems = cards.flatMap((card) => {
     const anchor = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(card);
     const href = anchor?.[1];
     const anchorTitle = anchor?.[2];
@@ -76,9 +76,24 @@ async function readLaunchSchedule(): Promise<MissionBriefing[]> {
     const text = decodeXml(card);
     if (!title || !/(?:launch|mission|artemis|moon|lunar|crs-|progress|starliner|blue ghost|sunrise)/i.test(`${title} ${text}`)) return [];
     const publishedAt = readScheduleDate(`${title} ${text}`);
-    const category = publishedAt && new Date(publishedAt) < now ? "past" : "upcoming";
+    const category: MissionBriefing["category"] = publishedAt && new Date(publishedAt) < now ? "past" : "upcoming";
     return [{ title, summary: text.slice(0, 900), url, publishedAt, category, source: "NASA Launch Schedule" }];
   });
+  // NASA has changed the schedule's markup before; keep an anchor-based fallback so the feed remains usable.
+  const anchorItems = Array.from(html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)).flatMap((match) => {
+    const href = match[1];
+    const title = decodeXml(match[2] ?? "");
+    if (!href || !title || /^(?:launch schedule|upcoming launches|view all)$/i.test(title)) return [];
+    const url = new URL(href, scheduleUrl).toString();
+    if (!/^https:\/\/(?:www\.)?nasa\.gov\//i.test(url) || url === scheduleUrl) return [];
+    const index = match.index ?? 0;
+    const context = decodeXml(html.slice(Math.max(0, index - 700), Math.min(html.length, index + 1100)));
+    if (!/(?:launch|mission|artemis|moon|lunar|crs-|progress|starliner|blue ghost|sunrise)/i.test(`${title} ${context}`)) return [];
+    const publishedAt = readScheduleDate(`${title} ${context}`);
+    const category: MissionBriefing["category"] = publishedAt && new Date(publishedAt) < now ? "past" : "upcoming";
+    return [{ title, summary: context.slice(0, 900), url, publishedAt, category, source: "NASA Launch Schedule" }];
+  }).slice(0, 40);
+  return [...new Map([...cardItems, ...anchorItems].map((item) => [item.url, item])).values()].slice(0, 60);
 }
 
 export const getMissionBriefings = createServerFn({ method: "GET" }).handler(async (): Promise<{ items: MissionBriefing[]; refreshedAt: string; scheduleUrl: string }> => {
@@ -86,12 +101,12 @@ export const getMissionBriefings = createServerFn({ method: "GET" }).handler(asy
   try {
     const [fresh] = await db<{ count: number }[]>`
       SELECT COUNT(*)::int AS count FROM mission_updates
-      WHERE retrieved_at > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+      WHERE retrieved_at > CURRENT_TIMESTAMP - INTERVAL '1 minute'
     `;
     if ((fresh?.count ?? 0) > 0) {
       const rows = await db<MissionBriefing[]>`
         SELECT title, summary, source_url AS url, published_at::text AS "publishedAt", category, source
-        FROM mission_updates ORDER BY published_at DESC NULLS LAST LIMIT 50
+        FROM mission_updates ORDER BY published_at DESC NULLS LAST LIMIT 100
       `;
     return { items: rows, refreshedAt: new Date().toISOString(), scheduleUrl };
     }
@@ -108,13 +123,14 @@ export const getMissionBriefings = createServerFn({ method: "GET" }).handler(asy
     try {
       const rows = await db<MissionBriefing[]>`
         SELECT title, summary, source_url AS url, published_at::text AS "publishedAt", category, source
-        FROM mission_updates ORDER BY published_at DESC NULLS LAST LIMIT 50
+        FROM mission_updates ORDER BY published_at DESC NULLS LAST LIMIT 100
       `;
       if (rows.length) return { items: rows, refreshedAt: "Cached NASA feed", scheduleUrl };
     } catch { /* No stored copy is available. */ }
     throw error;
   }
 
+  let storedItems: MissionBriefing[] = [];
   try {
     await db.begin(async (tx) => {
       for (const item of items) {
@@ -128,5 +144,14 @@ export const getMissionBriefings = createServerFn({ method: "GET" }).handler(asy
       }
     });
   } catch { /* Keep the official live feed even if persistence is unavailable. */ }
-  return { items: items.sort((a, b) => (a.publishedAt ?? "9999").localeCompare(b.publishedAt ?? "9999")), refreshedAt: new Date().toISOString(), scheduleUrl };
+  try {
+    storedItems = await db<MissionBriefing[]>`
+      SELECT title, summary, source_url AS url, published_at::text AS "publishedAt", category, source
+      FROM mission_updates ORDER BY published_at DESC NULLS LAST LIMIT 100
+    `;
+  } catch { /* The site can still serve NASA's live response without the database. */ }
+  const merged = new Map<string, MissionBriefing>();
+  for (const item of storedItems) merged.set(item.url, item);
+  for (const item of items) merged.set(item.url, item);
+  return { items: [...merged.values()].sort((a, b) => (a.publishedAt ?? "9999").localeCompare(b.publishedAt ?? "9999")), refreshedAt: new Date().toISOString(), scheduleUrl };
 });

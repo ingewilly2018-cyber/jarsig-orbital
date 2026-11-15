@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { NasaWmtsMap } from "@/components/NasaWmtsMap";
 import { NasaMoonGlobe } from "@/components/NasaMoonGlobe";
+import { getCountryFootprint, type CountryFootprint } from "@/lib/country-footprints";
 import { listPsrZones, type MissionLog, type PsrZone } from "@/lib/database.functions";
 import { LUNAR_REFERENCE_SITES, NASA_ARTEMIS_REGIONS_URL, SITE_COORDINATES_SOURCE_URL } from "@/lib/lunar-sites";
 
@@ -71,6 +72,8 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
   const [mapPoint, setMapPoint] = useState({ latitude: -85, longitude: 0 });
   const [viewMode, setViewMode] = useState<"surface" | "globe">("surface");
   const [country, setCountry] = useState("Cameroon");
+  const [countryFootprint, setCountryFootprint] = useState<CountryFootprint>({ rings: [], enclosure: [] });
+  const [countryError, setCountryError] = useState(false);
   const [zones, setZones] = useState<PsrZone[] | null>(null);
   const [logs, setLogs] = useState<MissionLog[]>([]);
   const [zonesUnavailable, setZonesUnavailable] = useState(false);
@@ -84,32 +87,40 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    void getCountryFootprint(country, mapPoint)
+      .then((footprint) => { if (active) { setCountryFootprint(footprint); setCountryError(false); } })
+      .catch(() => { if (active) { setCountryFootprint({ rings: [], enclosure: [] }); setCountryError(true); } });
+    return () => { active = false; };
+  }, [country, mapPoint.latitude, mapPoint.longitude]);
+
   return (
     <div>
-      <section className="relative h-[100svh] min-h-[42rem] overflow-hidden bg-[#08090b] text-white" aria-label="NASA Moon Trek lunar explorer">
-        {viewMode === "surface" ? <NasaWmtsMap selectedPoint={mapPoint} onSelect={setMapPoint} mapHeightClass="h-full" showInstructions={false} /> : <NasaMoonGlobe selectedPoint={mapPoint} className="h-full w-full" />}
+      <section className="relative h-[100svh] min-h-[38rem] overflow-hidden bg-[#08090b] text-white sm:min-h-[42rem]" aria-label="NASA Moon Trek lunar explorer">
+        {viewMode === "surface" ? <NasaWmtsMap selectedPoint={mapPoint} onSelect={setMapPoint} footprint={countryFootprint} mapHeightClass="h-full" showInstructions={false} /> : <NasaMoonGlobe footprint={countryFootprint} className="h-full w-full" />}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-black/75" />
-        <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-5 py-5 sm:px-10">
+        <header className="absolute inset-x-0 top-0 z-30 flex flex-col items-start gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-10 sm:py-5">
           <Link to="/" className="pointer-events-auto text-poster text-lg">JARSIG</Link>
-          <nav className="pointer-events-auto flex flex-wrap justify-end gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest sm:text-xs">
+          <nav className="pointer-events-auto flex w-full flex-wrap justify-between gap-x-3 gap-y-2 text-[9px] uppercase tracking-widest sm:w-auto sm:justify-end sm:gap-x-5 sm:text-xs">
             <Link to="/science" search={{ latitude: -85, longitude: 0 }} className="hover:text-white/70">Sun / Earth</Link>
             <Link to="/map" className="hover:text-white/70">Map tools</Link>
-            <Link to="/missions" className="hover:text-white/70">Mission information</Link>
+            <Link to="/missions" className="border border-white/40 px-2 py-1 text-white hover:bg-white/10 sm:px-3 sm:py-2">NASA mission info</Link>
           </nav>
         </header>
-        <div className="absolute inset-x-0 top-[18%] z-20 mx-auto max-w-6xl px-6 sm:top-[20%]">
-          <p className="text-[10px] uppercase tracking-[0.35em] text-white/70">NASA Moon Trek · NASA / JPL · Lunar Reconnaissance Orbiter</p>
-          <h1 className="text-poster mt-4 max-w-3xl text-4xl sm:text-6xl">Choose a landing area</h1>
-          <p className="mt-4 max-w-xl text-sm text-white/75">Explore NASA lunar imagery, rotate the Moon in 3D, and select a point on the surface to inspect its coordinates.</p>
+        <div className="absolute inset-x-0 top-[21%] z-20 mx-auto max-w-6xl px-4 sm:top-[20%] sm:px-6">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-white/70 sm:text-[10px] sm:tracking-[0.35em]">NASA Moon Trek · NASA / JPL · Lunar Reconnaissance Orbiter</p>
+          <h1 className="text-poster mt-3 max-w-3xl text-4xl sm:mt-4 sm:text-6xl">Choose a landing area</h1>
+          <p className="mt-3 max-w-xl text-xs text-white/75 sm:mt-4 sm:text-sm">Explore NASA lunar imagery, rotate the Moon in 3D, and select a point on the surface to inspect its coordinates.</p>
         </div>
-        <aside className="absolute bottom-8 left-6 z-20 max-w-sm border border-white/25 bg-black/70 p-4 backdrop-blur sm:bottom-10 sm:left-10">
+        <aside className="absolute bottom-[6.4rem] left-4 right-4 z-20 max-w-sm border border-white/25 bg-black/70 p-3 backdrop-blur sm:bottom-10 sm:left-10 sm:right-auto sm:p-4">
           <p className="text-[10px] uppercase tracking-[0.25em] text-white/60">Selected lunar point</p>
           <p className="mt-2 font-mono text-sm">{mapPoint.latitude.toFixed(3)}° latitude · {mapPoint.longitude.toFixed(3)}° longitude</p>
           <p className="mt-2 text-xs text-white/65">{viewMode === "surface" ? "Drag to move · scroll to zoom · click to select" : "Drag the globe to rotate the lunar surface"}</p>
         </aside>
-        <div className="absolute bottom-8 right-6 z-30 flex gap-2 sm:bottom-10 sm:right-10">
-          <button onClick={() => setViewMode("surface")} aria-pressed={viewMode === "surface"} className={`border border-white/40 px-4 py-3 text-[10px] uppercase tracking-widest backdrop-blur ${viewMode === "surface" ? "bg-white text-black" : "bg-black/60 text-white"}`}>Surface map</button>
-          <button onClick={() => setViewMode("globe")} aria-pressed={viewMode === "globe"} className={`border border-white/40 px-4 py-3 text-[10px] uppercase tracking-widest backdrop-blur ${viewMode === "globe" ? "bg-white text-black" : "bg-black/60 text-white"}`}>3D Moon</button>
+        <div className="absolute bottom-4 left-4 right-4 z-30 flex gap-2 sm:bottom-10 sm:left-auto sm:right-10">
+          <button onClick={() => setViewMode("surface")} aria-pressed={viewMode === "surface"} className={`flex-1 border border-white/40 px-3 py-3 text-[10px] uppercase tracking-widest backdrop-blur sm:flex-none sm:px-4 ${viewMode === "surface" ? "bg-white text-black" : "bg-black/60 text-white"}`}>Surface map</button>
+          <button onClick={() => setViewMode("globe")} aria-pressed={viewMode === "globe"} className={`flex-1 border border-white/40 px-3 py-3 text-[10px] uppercase tracking-widest backdrop-blur sm:flex-none sm:px-4 ${viewMode === "globe" ? "bg-white text-black" : "bg-black/60 text-white"}`}>3D Moon</button>
         </div>
         <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noreferrer" className="absolute right-6 top-24 z-20 text-[10px] text-white/70 underline underline-offset-4 sm:right-10">NASA Moon Trek source</a>
       </section>
@@ -141,12 +152,13 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
       <section className="border-t border-border pt-8" aria-labelledby="country-comparison-title">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Moon Trek · Country Mover inspired comparison</p>
         <h2 id="country-comparison-title" className="mt-3 font-display text-2xl font-light">Compare a country’s area with the Moon</h2>
-        <div className="mt-5 flex flex-wrap items-center gap-4">
-          <label className="text-sm">Country <select value={country} onChange={(event) => setCountry(event.target.value)} className="ml-3 border border-border bg-background px-3 py-2"><option>Cameroon</option><option>France</option><option>United States</option><option>Canada</option><option>Brazil</option><option>India</option><option>Japan</option></select></label>
+        <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <label className="w-full text-sm sm:w-auto">Country <select value={country} onChange={(event) => setCountry(event.target.value)} className="mt-2 w-full border border-border bg-background px-3 py-2 sm:ml-3 sm:mt-0 sm:w-auto"><option>Cameroon</option><option>France</option><option>United States</option><option>Canada</option><option>Brazil</option><option>India</option><option>Japan</option></select></label>
           <p className="text-sm text-muted-foreground">{country} covers about {({ Cameroon: "475,442", France: "551,695", "United States": "9,833,520", Canada: "9,984,670", Brazil: "8,515,767", India: "3,287,263", Japan: "377,975" } as Record<string, string>)[country]} km², compared with the Moon’s 37.9 million km² surface.</p>
         </div>
         <div className="mt-4 h-3 max-w-2xl overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-glow" style={{ width: `${Math.max(1, Number(({ Cameroon: 475442, France: 551695, "United States": 9833520, Canada: 9984670, Brazil: 8515767, India: 3287263, Japan: 377975 } as Record<string, number>)[country]) / 37900000 * 100)}%` }} /></div>
-        <p className="mt-2 text-xs text-muted-foreground">Relative area visualization. NASA’s full interactive Country Mover is linked from the Moon Trek source above.</p>
+        <p className="mt-2 text-xs text-muted-foreground">The selected country’s yellow outline is projected onto the lunar surface at the selected coordinates. Drag the 2D map or rotate the 3D Moon to inspect it.</p>
+        {countryError && <p role="status" className="mt-2 text-xs text-muted-foreground">The country outline could not be loaded. Check your connection, then refresh the page.</p>}
       </section>
       <section className="mt-12 border-t border-border pt-8" aria-labelledby="artemis-sites-title">
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">NASA Artemis south-pole candidates</p>

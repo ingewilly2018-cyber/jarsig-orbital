@@ -15,7 +15,7 @@ function AuthenticatedShell() {
           <Link to="/play" className="text-muted-foreground hover:text-foreground">Landing</Link>
           <Link to="/science" search={{ latitude: -85, longitude: 0 }} className="text-muted-foreground hover:text-foreground">Sun / Earth</Link>
           <Link to="/map" className="text-muted-foreground hover:text-foreground">Lunar map</Link>
-          <Link to="/missions" className="text-muted-foreground hover:text-foreground">Mission information</Link>
+          <Link to="/missions" className="border border-border px-3 py-2 text-foreground hover:border-foreground">NASA mission info</Link>
         </div>
       </nav>}
       <Outlet />
