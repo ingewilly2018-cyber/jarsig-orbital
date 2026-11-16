@@ -48,8 +48,7 @@ export async function getCountryFootprint(country: string, moonCenter: LunarPoin
     : feature.geometry.coordinates as number[][][][];
   const selectedPolygons = [...polygons]
     .filter((polygon) => !!polygon[0] && polygon[0]!.length > 2)
-    .sort((a, b) => (b[0]?.length ?? 0) - (a[0]?.length ?? 0))
-    .slice(0, 24);
+    .sort((a, b) => (b[0]?.length ?? 0) - (a[0]?.length ?? 0));
   const mainRing = selectedPolygons[0]?.[0];
   if (!mainRing) throw new Error(`No usable outline found for ${country}`);
   // Only draw country exteriors: interior GeoJSON rings can look like stray circles on a globe.
@@ -82,20 +81,14 @@ export async function getCountryFootprint(country: string, moonCenter: LunarPoin
       return destination(moonCenter, eastKm, northKm);
     });
   });
-  const radians = Math.PI / 180;
-  let maxDistance = 0;
-  for (const ring of samples) for (const point of ring) {
-    const lat1 = moonCenter.latitude * radians;
-    const lat2 = point.latitude * radians;
-    const dLat = lat2 - lat1;
-    const dLon = (point.longitude - moonCenter.longitude) * radians;
-    const haversine = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-    maxDistance = Math.max(maxDistance, 2 * 1737.4 * Math.asin(Math.min(1, Math.sqrt(haversine))));
-  }
-  const enclosureRadius = Math.min(maxDistance * 1.12 + 20, 1737.4 * Math.PI * 0.94);
-  const enclosure = Array.from({ length: 120 }, (_, index) => {
-    const bearing = index * Math.PI * 2 / 120;
-    return destination(moonCenter, Math.sin(bearing) * enclosureRadius, Math.cos(bearing) * enclosureRadius);
-  });
-  return { rings: samples, enclosure };
+  return { rings: samples, enclosure: [] };
+}
+
+/** Return every country name exposed by the boundary dataset for the country picker. */
+export async function getCountryNames(): Promise<string[]> {
+  const features = await getFeatures();
+  return [...new Set(features
+    .map((feature) => feature.properties?.["ADMIN"] ?? feature.properties?.["NAME"])
+    .filter((name): name is string => !!name))]
+    .sort((a, b) => a.localeCompare(b));
 }

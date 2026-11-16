@@ -8,6 +8,7 @@ const VERTEX_SHADER = `
   uniform float uYaw;
   uniform float uPitch;
   uniform float uAspect;
+  uniform float uScale;
   varying vec2 vUv;
   varying vec3 vNormal;
   void main() {
@@ -15,7 +16,7 @@ const VERTEX_SHADER = `
     vec3 p = vec3(cy * aPosition.x + sy * aPosition.z, aPosition.y, -sy * aPosition.x + cy * aPosition.z);
     float cp = cos(uPitch), sp = sin(uPitch);
     p = vec3(p.x, cp * p.y - sp * p.z, sp * p.y + cp * p.z);
-    gl_Position = vec4(p.x * 0.88 / uAspect, p.y * 0.88, p.z * 0.08, 1.0);
+    gl_Position = vec4(p.x * uScale / uAspect, p.y * uScale, p.z * 0.08, 1.0);
     vNormal = p;
     vUv = aUv;
   }
@@ -164,6 +165,7 @@ export function NasaMoonGlobe({ className = "", footprint = { rings: [], enclosu
       gl.uniform1f(gl.getUniformLocation(program, "uYaw"), yaw);
       gl.uniform1f(gl.getUniformLocation(program, "uPitch"), motion.pitch);
       gl.uniform1f(gl.getUniformLocation(program, "uAspect"), width / height);
+      gl.uniform1f(gl.getUniformLocation(program, "uScale"), window.innerWidth < 640 ? 0.72 : 0.88);
       gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 5);
       frame = requestAnimationFrame(draw);
     };
@@ -184,7 +186,6 @@ export function NasaMoonGlobe({ className = "", footprint = { rings: [], enclosu
     context.fillStyle = "rgba(255,213,45,.2)";
     context.lineWidth = 2.5;
     context.lineJoin = "round";
-    const enclosureCoordinates = footprint.enclosure.map(({ latitude, longitude }) => ({ x: (longitude + 180) / 360 * canvas.width, y: (90 - latitude) / 180 * canvas.height }));
     const coordinates = footprint.rings.map((ring) => {
       let previousX: number | null = null;
       return ring.map(({ latitude, longitude }) => {
@@ -198,15 +199,6 @@ export function NasaMoonGlobe({ className = "", footprint = { rings: [], enclosu
       });
     });
     for (const shift of [-canvas.width, 0, canvas.width]) {
-      if (enclosureCoordinates.length > 2) {
-        context.beginPath();
-        traceSmoothRing(context, enclosureCoordinates.map(({ x, y }) => ({ x: x + shift, y })));
-        context.strokeStyle = "rgba(255,213,45,.6)";
-        context.lineWidth = 1.5;
-        context.setLineDash([6, 5]);
-        context.stroke();
-        context.setLineDash([]);
-      }
       context.beginPath();
       for (const ring of coordinates) {
         if (ring.length < 3) continue;

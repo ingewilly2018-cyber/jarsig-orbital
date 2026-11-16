@@ -156,10 +156,6 @@ export function NasaWmtsMap({
           <img key={tile.key} src={tile.url} alt="" draggable={false} onError={() => setTileError(true)} className="pointer-events-none absolute h-64 w-64 max-w-none" style={{ left: tile.left, top: tile.top }} />
         ))}
         {size.width > 0 && size.height > 0 && <svg aria-label="Yellow outline of the selected country placed on the Moon" className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-hidden" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">
-          <path d={footprint.enclosure.length ? smoothClosedPath(footprint.enclosure.map((point) => {
-            const world = toWorld(point, zoom);
-            return { x: size.width / 2 + world.x - centerWorld.x, y: size.height / 2 + world.y - centerWorld.y };
-          })) : ""} fill="none" stroke="rgba(255,213,45,.55)" strokeWidth="1.25" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
           <path d={footprint.rings.map((ring) => {
             let previousX: number | null = null;
             const points = ring.map((point) => {

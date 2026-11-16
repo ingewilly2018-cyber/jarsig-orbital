@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { NasaWmtsMap } from "@/components/NasaWmtsMap";
 import { NasaMoonGlobe } from "@/components/NasaMoonGlobe";
-import { getCountryFootprint, type CountryFootprint } from "@/lib/country-footprints";
+import { getCountryFootprint, getCountryNames, type CountryFootprint } from "@/lib/country-footprints";
 import { listPsrZones, type MissionLog, type PsrZone } from "@/lib/database.functions";
 import { LUNAR_REFERENCE_SITES, NASA_ARTEMIS_REGIONS_URL, SITE_COORDINATES_SOURCE_URL } from "@/lib/lunar-sites";
 
@@ -27,6 +27,7 @@ const SITES: Site[] = [
   { id: "tycho", name: "Tycho Crater", desc: "Jagged rays and central peak. Hard.", rough: 120, pad: 75, fuel: 70, x: 45, y: 75 },
   { id: "shack", name: "Shackleton (South Pole)", desc: "Steep ridges, tiny pad, low fuel. Expert.", rough: 170, pad: 55, fuel: 55, x: 50, y: 92 },
 ];
+const COUNTRY_AREAS_KM2: Record<string, number> = { Cameroon: 475442, France: 551695, "United States": 9833520, "United States of America": 9833520, Canada: 9984670, Brazil: 8515767, India: 3287263, Japan: 377975 };
 
 const W = 900, H = 560, GRAV = 1.62 * 9, THRUST = 4.2 * 9, TURN = 2.4, BURN = 9;
 const formatLogDate = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toLocaleString();
@@ -72,8 +73,14 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
   const [mapPoint, setMapPoint] = useState({ latitude: -85, longitude: 0 });
   const [viewMode, setViewMode] = useState<"surface" | "globe">("surface");
   const [country, setCountry] = useState("Cameroon");
+  const [countryNames, setCountryNames] = useState<string[]>(["Cameroon", "France", "United States", "Canada", "Brazil", "India", "Japan"]);
   const [countryFootprint, setCountryFootprint] = useState<CountryFootprint>({ rings: [], enclosure: [] });
   const [countryError, setCountryError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void getCountryNames().then((names) => { if (active && names.length) setCountryNames(names); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const [zones, setZones] = useState<PsrZone[] | null>(null);
   const [logs, setLogs] = useState<MissionLog[]>([]);
   const [zonesUnavailable, setZonesUnavailable] = useState(false);
@@ -153,10 +160,10 @@ function SitePicker({ onPick }: { onPick: (s: Site) => void }) {
         <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Moon Trek · Country Mover inspired comparison</p>
         <h2 id="country-comparison-title" className="mt-3 font-display text-2xl font-light">Compare a country’s area with the Moon</h2>
         <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-          <label className="w-full text-sm sm:w-auto">Country <select value={country} onChange={(event) => setCountry(event.target.value)} className="mt-2 w-full border border-border bg-background px-3 py-2 sm:ml-3 sm:mt-0 sm:w-auto"><option>Cameroon</option><option>France</option><option>United States</option><option>Canada</option><option>Brazil</option><option>India</option><option>Japan</option></select></label>
-          <p className="text-sm text-muted-foreground">{country} covers about {({ Cameroon: "475,442", France: "551,695", "United States": "9,833,520", Canada: "9,984,670", Brazil: "8,515,767", India: "3,287,263", Japan: "377,975" } as Record<string, string>)[country]} km², compared with the Moon’s 37.9 million km² surface.</p>
+          <label className="w-full text-sm sm:w-auto">Country <select value={country} onChange={(event) => setCountry(event.target.value)} className="mt-2 w-full border border-border bg-background px-3 py-2 sm:ml-3 sm:mt-0 sm:w-auto">{countryNames.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+          <p className="text-sm text-muted-foreground">{COUNTRY_AREAS_KM2[country] ? `${country} covers about ${COUNTRY_AREAS_KM2[country]!.toLocaleString()} km², compared with the Moon’s 37.9 million km² surface.` : `The outline of ${country} is projected onto the Moon. Area data is not available for this comparison.`}</p>
         </div>
-        <div className="mt-4 h-3 max-w-2xl overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-glow" style={{ width: `${Math.max(1, Number(({ Cameroon: 475442, France: 551695, "United States": 9833520, Canada: 9984670, Brazil: 8515767, India: 3287263, Japan: 377975 } as Record<string, number>)[country]) / 37900000 * 100)}%` }} /></div>
+        {COUNTRY_AREAS_KM2[country] && <div className="mt-4 h-3 max-w-2xl overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-glow" style={{ width: `${Math.max(1, COUNTRY_AREAS_KM2[country]! / 37900000 * 100)}%` }} /></div>}
         <p className="mt-2 text-xs text-muted-foreground">The selected country’s yellow outline is projected onto the lunar surface at the selected coordinates. Drag the 2D map or rotate the 3D Moon to inspect it.</p>
         {countryError && <p role="status" className="mt-2 text-xs text-muted-foreground">The country outline could not be loaded. Check your connection, then refresh the page.</p>}
       </section>

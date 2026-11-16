@@ -5,7 +5,7 @@ import { HalftoneSphere } from "@/components/HalftoneSphere";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "JARSIG — Space Project" },
+      { title: "JARSIG : Space Project" },
       { name: "description", content: "Open-source space landing innovation helping the new generation train autonomous spacecraft to land in any scenario." },
       { property: "og:title", content: "JARSIG — Space Project" },
       { property: "og:description", content: "Open-source space landing innovation helping the new generation train autonomous spacecraft to land in any scenario." },
